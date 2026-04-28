@@ -34,6 +34,10 @@ pub fn detect_type(path: &str) -> &'static str {
         "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "svg", "tif", "tiff", "avif", "heic",
         "heif",
     ];
+    const AUDIO_EXTS: &[&str] = &[
+        "aac", "ape", "aiff", "aif", "afc", "aifc", "mp3", "mp2", "mp1", "wav", "wave", "wv",
+        "opus", "flac", "ogg", "m4a", "m4b", "m4p", "m4r", "mpc", "mp+", "mpp", "spx",
+    ];
 
     let p = Path::new(path);
     if p.is_dir() {
@@ -46,6 +50,7 @@ pub fn detect_type(path: &str) -> &'static str {
         .as_deref()
     {
         Some(ext) if IMAGE_EXTS.contains(&ext) => "image",
+        Some(ext) if AUDIO_EXTS.contains(&ext) => "audio",
         Some("exe") => "exe",
         Some("bat") | Some("cmd") => "bat",
         Some("ps1") => "ps1",
@@ -275,4 +280,27 @@ pub fn toggle_favorite(conn: &Connection, id: i64) -> Result<bool, String> {
         .map_err(|e| e.to_string())?;
 
     Ok(new_val != 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detect_type;
+
+    #[test]
+    fn detect_type_supports_audio_without_common_video_containers() {
+        assert_eq!(detect_type(r"D:\Music\track.mp3"), "audio");
+        assert_eq!(detect_type(r"D:\Music\track.FLAC"), "audio");
+        assert_eq!(detect_type(r"D:\Music\track.m4a"), "audio");
+        assert_eq!(detect_type(r"D:\Video\clip.mp4"), "exe");
+        assert_eq!(detect_type(r"D:\Video\clip.m4v"), "exe");
+        assert_eq!(detect_type(r"D:\Music\track.wma"), "exe");
+    }
+
+    #[test]
+    fn detect_type_keeps_existing_file_types() {
+        assert_eq!(detect_type(r"D:\Images\cover.png"), "image");
+        assert_eq!(detect_type(r"D:\Apps\tool.exe"), "exe");
+        assert_eq!(detect_type(r"D:\Scripts\build.cmd"), "bat");
+        assert_eq!(detect_type(r"D:\Scripts\profile.ps1"), "ps1");
+    }
 }

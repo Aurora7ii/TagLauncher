@@ -111,6 +111,52 @@ export async function openInExplorer(path: string): Promise<void> {
   return invoke("open_in_explorer", { path });
 }
 
+// ---- 对象预览 ----
+
+export interface ObjectPreviewFileInfo {
+  name: string;
+  path: string;
+  item_type: string;
+  is_file: boolean;
+  is_dir: boolean;
+  size: number | null;
+  modified_at_secs: number | null;
+}
+
+export interface ObjectDirectoryEntry {
+  name: string;
+  path: string;
+  item_type: string;
+  is_file: boolean;
+  is_dir: boolean;
+  size: number | null;
+}
+
+export interface AudioPreviewInfo {
+  duration_ms: number | null;
+  sample_rate: number | null;
+  encoding: string | null;
+  bitrate_kbps: number | null;
+  bit_depth: number | null;
+  channels: number | null;
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  album_cover_data_url: string | null;
+}
+
+export async function getObjectFileInfo(path: string): Promise<ObjectPreviewFileInfo> {
+  return invoke("get_object_file_info", { path });
+}
+
+export async function listObjectDirectory(path: string): Promise<ObjectDirectoryEntry[]> {
+  return invoke("list_object_directory", { path });
+}
+
+export async function getAudioPreview(path: string): Promise<AudioPreviewInfo> {
+  return invoke("get_audio_preview", { path });
+}
+
 // ---- 收藏 ----
 
 /** 切换收藏状态，返回新的收藏状态 */

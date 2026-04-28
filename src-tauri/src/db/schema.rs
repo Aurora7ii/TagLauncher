@@ -9,7 +9,7 @@ pub fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             path TEXT UNIQUE NOT NULL,
-            type TEXT CHECK(type IN ('folder', 'image', 'exe', 'bat', 'ps1')),
+            type TEXT CHECK(type IN ('folder', 'image', 'audio', 'exe', 'bat', 'ps1')),
             icon_path TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_used_at DATETIME,

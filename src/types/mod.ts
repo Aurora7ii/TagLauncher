@@ -10,8 +10,16 @@
  *   "storage"         — mod 专属 localStorage 空间
  *   "dom"             — 操作 DOM 结构
  *   "theme"           — 读写 CSS 变量（setThemeVariable）
+ *   "fs:read"         — 读取 mod 自身目录内文件
+ *   "fs:write"        — 写入 mod 自身目录内文件
+ *   "net"             — 网络访问
+ *   "events:emit"     — 发送 mod 间事件
+ *   "events:receive"  — 接收 mod 间事件
+ *   "objects:preview" — 读取被管理对象的预览信息和资源 URL
+ *   "data"            — mod 专属数据库存储
  *
- * 若 permissions 未声明（undefined / 空数组），则不受限制（向后兼容）。
+ * 若 permissions 未声明（undefined），则不受限制（向后兼容）。
+ * 若 permissions 为 []，则无任何权限。
  */
 export type ModPermission =
   | "items:read"
@@ -29,6 +37,7 @@ export type ModPermission =
   | "net"
   | "events:emit"
   | "events:receive"
+  | "objects:preview"
   | "data";
 
 export interface ModManifest {

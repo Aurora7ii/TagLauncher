@@ -1,4 +1,5 @@
 use crate::models::Item;
+use crate::services::object_preview_service;
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::path::Path;
@@ -41,6 +42,13 @@ fn auto_visual_path(app: &AppHandle, item: &Item) -> Option<String> {
         });
         std::fs::create_dir_all(cache_dir).ok()?;
 
+        if item.item_type == "audio" {
+            if let Some(path) = audio_cover_cached_path(cache_dir, &item.path) {
+                return Some(path.to_string_lossy().to_string());
+            }
+            return None;
+        }
+
         let cached_path = icon_cache_path(cache_dir, &item.path);
         if cached_path.exists() {
             return Some(cached_path.to_string_lossy().to_string());
@@ -71,6 +79,11 @@ pub fn fill_auto_visual_paths(app: &AppHandle, items: &mut [Item]) {
 
 #[cfg(target_os = "windows")]
 fn icon_cache_path(cache_dir: &Path, input_path: &str) -> PathBuf {
+    cache_dir.join(format!("{}.png", icon_cache_key(input_path)))
+}
+
+#[cfg(target_os = "windows")]
+fn icon_cache_key(input_path: &str) -> String {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
     use std::time::UNIX_EPOCH;
@@ -87,7 +100,43 @@ fn icon_cache_path(cache_dir: &Path, input_path: &str) -> PathBuf {
         }
     }
 
-    cache_dir.join(format!("{:016x}.png", hasher.finish()))
+    format!("{:016x}", hasher.finish())
+}
+
+#[cfg(target_os = "windows")]
+fn audio_cover_cached_path(cache_dir: &Path, input_path: &str) -> Option<PathBuf> {
+    let key = icon_cache_key(input_path);
+    let no_cover_marker = cache_dir.join(format!("{}-cover.none", key));
+    if no_cover_marker.exists() {
+        return None;
+    }
+
+    for ext in ["jpg", "jpeg", "png", "gif", "bmp", "tiff"] {
+        let cached = cache_dir.join(format!("{}-cover.{}", key, ext));
+        if cached.exists() {
+            return Some(cached);
+        }
+    }
+
+    let cover = object_preview_service::extract_audio_cover(input_path).ok().flatten();
+    let Some((mime, bytes)) = cover else {
+        let _ = std::fs::write(no_cover_marker, []);
+        return None;
+    };
+    let ext = match mime.as_str() {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/gif" => "gif",
+        "image/bmp" => "bmp",
+        "image/tiff" => "tiff",
+        _ => {
+            let _ = std::fs::write(no_cover_marker, []);
+            return None;
+        }
+    };
+    let output_path = cache_dir.join(format!("{}-cover.{}", key, ext));
+    std::fs::write(&output_path, bytes).ok()?;
+    Some(output_path)
 }
 
 #[cfg(target_os = "windows")]

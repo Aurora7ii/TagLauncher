@@ -23,9 +23,11 @@
 // ============================================================================
 
 import * as db from "./db";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import type { Item, ItemWithTags, Tag, Cabinet } from "../types";
 import type { ModPermission } from "../types/mod";
 import type { PanelOptions, PanelHandle } from "../types/panel";
+import type { AudioPreviewInfo, ObjectDirectoryEntry, ObjectPreviewFileInfo } from "./db";
 import { requestPanel, destroyAllForMod } from "./panelRegistry";
 import { createModUiKit, type ModUiKit } from "./modUiKit";
 import {
@@ -105,6 +107,12 @@ interface ModScope {
   net: {
     fetch(url: string, options?: RequestInit): Promise<Response>;
   };
+  preview: {
+    getFileInfo(path: string): Promise<ObjectPreviewFileInfo>;
+    listDirectory(path: string): Promise<ObjectDirectoryEntry[]>;
+    getAudio(path: string): Promise<AudioPreviewInfo>;
+    toAssetUrl(path: string): string;
+  };
   // 事件通信
   events: {
     emit(eventName: string, data?: unknown): void;
@@ -180,7 +188,7 @@ interface TagLauncherModApi {
 }
 
 // ── 当前 API 版本 ────────────────────────────────────────────────────────
-const API_VERSION = "3.0.0";
+const API_VERSION = "3.1.0";
 
 // ── 内部监听器集合 ────────────────────────────────────────────────────────
 
@@ -482,6 +490,12 @@ function writeModFileBytes(modId: string, path: string, bytes: number[]): Promis
 function listModFiles(modId: string, path: string): Promise<Array<{ name: string; isFile: boolean; isDir: boolean }>> { return db.listModFiles(modId, path).then((list) => list.map((e) => ({ name: e.name, isFile: e.is_file, isDir: e.is_dir }))); }
 function removeModFile(modId: string, path: string): Promise<void>     { return db.removeModFile(modId, path); }
 
+// 对象预览
+function getObjectFileInfo(path: string): Promise<ObjectPreviewFileInfo> { return db.getObjectFileInfo(path); }
+function listObjectDirectory(path: string): Promise<ObjectDirectoryEntry[]> { return db.listObjectDirectory(path); }
+function getAudioPreview(path: string): Promise<AudioPreviewInfo> { return db.getAudioPreview(path); }
+function toAssetUrl(path: string): string { return convertFileSrc(path.replace(/\\/g, "/")); }
+
 // ── 网络（占位）────────────────────────────────────────────────────────────
 
 function netFetchPlaceholder(): Promise<Response> {
@@ -633,6 +647,14 @@ function createScope(modId: string): ModScope {
     // 网络（占位）
     net: {
       fetch: guarded("net", "net.fetch", netFetchPlaceholder),
+    },
+
+    // 对象预览
+    preview: {
+      getFileInfo: guarded("objects:preview", "preview.getFileInfo", getObjectFileInfo),
+      listDirectory: guarded("objects:preview", "preview.listDirectory", listObjectDirectory),
+      getAudio: guarded("objects:preview", "preview.getAudio", getAudioPreview),
+      toAssetUrl: guarded("objects:preview", "preview.toAssetUrl", toAssetUrl),
     },
 
     // 事件通信

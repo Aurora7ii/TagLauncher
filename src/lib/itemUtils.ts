@@ -3,6 +3,7 @@ import type { ItemWithTags } from "../types";
 export const TYPE_ICONS: Record<string, string> = {
   folder: "📁",
   image: "🖼️",
+  audio: "♪",
   exe: "⚙️",
   bat: "📜",
   ps1: "🔧",
@@ -11,6 +12,7 @@ export const TYPE_ICONS: Record<string, string> = {
 export const TYPE_LABELS: Record<string, string> = {
   folder: "文件夹",
   image: "图片",
+  audio: "音频",
   exe: "应用程序",
   bat: "批处理",
   ps1: "PowerShell",

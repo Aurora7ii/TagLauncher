@@ -22,6 +22,7 @@ const PERMISSION_META: Record<ModPermission, { label: string; color: string }> =
   net: { label: "网络访问", color: "var(--color-danger)" },
   "events:emit": { label: "事件发送", color: "var(--accent-primary)" },
   "events:receive": { label: "事件接收", color: "var(--accent-primary)" },
+  "objects:preview": { label: "对象预览", color: "var(--accent-primary)" },
 };
 
 export function ModManagerPanel() {
