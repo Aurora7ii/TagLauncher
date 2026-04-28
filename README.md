@@ -87,17 +87,19 @@ cd src-tauri && cargo test
 
 ## 打包
 
-当前应用版本为 `1.0.0`，Release 打包命令：
+当前应用版本为 `1.1.0`，Release 打包命令：
 
 ```bash
 npm run tauri build
 ```
 
-构建完成后，桌面可执行文件通常位于：
+Windows Release 默认生成标准 MSI 安装包：
 
 ```text
-src-tauri/target/release/tag-launcher.exe
+src-tauri/target/release/bundle/msi/TagLauncher_1.1.0_x64_en-US.msi
 ```
+
+MSI 使用 WiX Toolset 生成，安装时会创建开始菜单快捷方式，并在功能选择页提供桌面快捷方式可选项。项目 MIT 许可证会显示在安装程序许可页面中。
 
 ## 数据目录
 

@@ -295,16 +295,17 @@ npm run tauri dev    # 启动 Tauri 开发窗口
 
 ### 生产构建
 ```bash
-npm run tauri build  # 编译 + 打包
+npm run tauri build  # 编译 + 打包 MSI
 ```
 
-产物位置：`src-tauri/target/release/tag-launcher.exe`
+产物位置：`src-tauri/target/release/bundle/msi/TagLauncher_1.1.0_x64_en-US.msi`
 
 ### 部署
-- 单文件部署：复制 `tag-launcher.exe` 到任意目录即可运行
+- 安装包部署：运行 MSI 安装包完成安装
 - 运行时依赖：Windows 10 1803+ 或 Windows 11（需要 WebView2）
 - 数据存储：`%APPDATA%/com.taglauncher.app/taglauncher.db`
 - 同义词字典：exe 同级目录的 `synonyms.json`（首次运行自动生成）
+- 开始菜单快捷方式默认创建，桌面快捷方式可在安装功能选择页中选择。
 
 ---
 

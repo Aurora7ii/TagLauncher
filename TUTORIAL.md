@@ -180,7 +180,7 @@ src-tauri/src/
 
 ## 7.1 当前策略
 
-当前是便携式单 exe 为主：
+当前策略是生成标准 Windows MSI 安装包：
 
 ```bash
 npm run tauri build
@@ -188,7 +188,9 @@ npm run tauri build
 
 产物：
 
-- `src-tauri/target/release/tag-launcher.exe`
+- `src-tauri/target/release/bundle/msi/TagLauncher_1.1.0_x64_en-US.msi`
+
+MSI 使用 WiX Toolset 生成，会创建开始菜单快捷方式；桌面快捷方式在安装功能选择页中作为可选项。
 
 ## 7.2 兼容性说明
 
