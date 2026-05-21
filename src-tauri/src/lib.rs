@@ -31,16 +31,23 @@ pub fn run() {
             })?;
 
             // 初始化数据库：新架构使用 Save/ 存放应用原生数据。
-            // 若用户来自旧版本且 AppData 中已有数据库，首次启动自动复制一份到 Save/。
+            // 若用户来自旧版本（AppData/Program Files MSI 安装等位置）首次启动时自动
+            // 扫描所有历史可能位置，复制最新修改的 db 到 Save/。
+            // 若当前 db 是历史失败启动留下的未完成迁移残骸（schema_version=0），
+            // 也尝试重新扫描历史位置覆盖之，避免要求用户手动清理。
             let db_path = app_paths.save_dir.join("taglauncher.db");
-            let legacy_db_path = app_dir.join("taglauncher.db");
-            if !db_path.exists() && legacy_db_path.exists() {
-                std::fs::copy(&legacy_db_path, &db_path).map_err(|e| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("Failed to migrate database into Save directory: {}", e),
-                    )
-                })?;
+            let needs_legacy_scan = !db_path.exists() || !is_db_healthy(&db_path);
+            if needs_legacy_scan {
+                if let Some(src) = find_legacy_db(&app_dir) {
+                    if src != db_path {
+                        std::fs::copy(&src, &db_path).map_err(|e| {
+                            std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                format!("Failed to migrate database from {:?}: {}", src, e),
+                            )
+                        })?;
+                    }
+                }
             }
             let database = Database::new(&db_path).map_err(|e| {
                 std::io::Error::new(
@@ -253,4 +260,53 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// 扫描所有可能存放旧版本数据库的位置，返回最近修改的那个。
+/// 涵盖：老 AppData 路径、MSI per-machine 安装位置（Program Files / Program Files (x86)）。
+fn find_legacy_db(app_data_dir: &PathBuf) -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    // 1. 老 AppData roaming 位置（v1.0.x 之前的默认位置）
+    candidates.push(app_data_dir.join("taglauncher.db"));
+
+    // 2. MSI per-machine 安装位置（Program Files\TagLauncher\Save\）
+    // 64 位进程下 ProgramFiles 已指向真实 Program Files; ProgramFiles(x86) 用于兼容
+    // 32 位安装残留。无需检查 ProgramW6432（在 64 位进程中与 ProgramFiles 重复）。
+    for env_key in ["ProgramFiles", "ProgramFiles(x86)"] {
+        if let Ok(pf) = std::env::var(env_key) {
+            candidates.push(
+                PathBuf::from(pf)
+                    .join("TagLauncher")
+                    .join("Save")
+                    .join("taglauncher.db"),
+            );
+        }
+    }
+
+    candidates
+        .into_iter()
+        .filter(|p| p.exists())
+        .max_by_key(|p| std::fs::metadata(p).and_then(|m| m.modified()).ok())
+}
+
+/// 判断数据库是否完成过初始化迁移（app_meta.schema_version > 0）。
+/// 返回 false 表示这是个空 / 未迁移 / 损坏的 db，可以安全地被 legacy 覆盖。
+fn is_db_healthy(db_path: &std::path::Path) -> bool {
+    // 防御：Connection::open 对不存在路径会创建空 db，故先校验存在性。
+    if !db_path.exists() {
+        return false;
+    }
+    let conn = match rusqlite::Connection::open(db_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let version: u32 = conn
+        .query_row(
+            "SELECT CAST(value AS INTEGER) FROM app_meta WHERE key='schema_version'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    version > 0
 }

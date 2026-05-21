@@ -34,8 +34,8 @@ pub fn create_tables(conn: &Connection) -> Result<(), rusqlite::Error> {
         CREATE INDEX IF NOT EXISTS idx_item_tags_tag_item
             ON item_tags(tag_id, item_id);
 
-        CREATE INDEX IF NOT EXISTS idx_item_tags_item_position
-            ON item_tags(item_id, position);
+        -- 注意: idx_item_tags_item_position 由 V003PerformanceIndexes 迁移创建,
+        -- 不能放在此处, 否则会在 position 列尚未补齐时(老库)报错
 
         -- ========== FTS5 全文搜索虚拟表 ==========
         CREATE VIRTUAL TABLE IF NOT EXISTS items_fts USING fts5(

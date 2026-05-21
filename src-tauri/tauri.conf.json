@@ -11,10 +11,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi"],
+    "targets": ["nsis"],
     "publisher": "RyuuJi Soft",
     "license": "MIT",
-    "licenseFile": "../LICENSE.rtf",
+    "licenseFile": "license_en.txt",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -28,10 +28,11 @@
         "silent": true
       },
       "allowDowngrades": false,
-      "wix": {
-        "upgradeCode": "447e00f8-476d-5fa2-9643-d89bf831258a",
-        "language": "en-US",
-        "template": "wix/main.wxs"
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": ["English", "SimpChinese"],
+        "displayLanguageSelector": true
       }
     }
   },
