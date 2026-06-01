@@ -1,64 +1,34 @@
-name: Build TagLauncher Windows EXE
+name: Build TagLauncher
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # 提前适配Node24，消除Node20弃用警告
-
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # Node20，提前兼容Node24新标准
-      - name: Setup Node 20
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: NPM淘宝源加速
-        run: npm config set registry https://registry.npmmirror.com
 
-      # 【关键】替换废弃actions-rs/toolchain，使用官方维护新版Rust安装action
-      - name: Install Rust Toolchain
+      - name: Use Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          cache: false # 搭配下面rust-cache
 
-      # Cargo换rsproxy国内源
-      - name: Config Cargo Mirror
-        run: |
-          New-Item -Path $env:USERPROFILE\.cargo -ItemType Directory -Force
-          @"
-          [source.crates-io]
-          replace-with = 'rsproxy'
-          [source.rsproxy]
-          registry = "sparse+https://rsproxy.cn/index/"
-          "@ | Out-File $env:USERPROFILE\.cargo\config.toml -Encoding utf8
-
-      # Rust编译缓存（大幅缩短二次编译时间）
-      - name: Rust Build Cache
-        uses: Swatinem/rust-cache@v2
-
-      # 预装WebView2
-      - name: Install WebView2 Runtime
+      - name: Install WebView2
         run: choco install webview2-runtime -y
 
-      # Tauri工具国内镜像，绕过GitHub下载卡死
-      - name: Install & Build Tauri
-        env:
-          TAURI_BINARY_DOWNLOAD_BASE_URL: https://npmmirror.com/mirrors/tauri-binary-releases
-        run: |
-          npm install
-          npm run tauri build
+      - name: Install Dependencies
+        run: npm install
 
-      # 只打包EXE，注释MSI进一步缩短打包时长
-      - name: Upload Build Artifact
+      - name: Build Tauri
+        run: npm run tauri build
+
+      - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
-          name: TagLauncher-Win-EXE
+          name: TagLauncher-EXE
           path: target/release/bundle/exe/*.exe
