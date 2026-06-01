@@ -1,0 +1,61 @@
+name: Build TagLauncher Windows EXE
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # 网页手动一键打包
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 配置Node+国内npm源
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Change npm registry to taobao
+        run: |
+          npm config set registry https://registry.npmmirror.com
+          npm install -g pnpm
+
+      # Rust配置+国内crates源
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Config cargo mirror
+        run: |
+          New-Item -Path $env:USERPROFILE\.cargo -ItemType Directory -Force
+          @"
+          [source.crates-io]
+          registry = "https://github.com/rust-lang/crates.io-index"
+          replace-with = 'mirror'
+          [source.mirror]
+          registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+          "@ | Out-File $env:USERPROFILE\.cargo\config.toml
+
+      # 安装Tauri打包依赖WebView2
+      - name: Install build dependency
+        run: choco install webview2-runtime -y
+
+      # 安装项目依赖
+      - name: Install project dependencies
+        run: pnpm install
+
+      # Tauri编译打包
+      - name: Build Tauri app
+        run: pnpm tauri build
+
+      # 上传打包产物
+      - name: Upload compiled artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TagLauncher-Win-Package
+          path: |
+            target/release/bundle/exe/*.exe
+            target/release/bundle/msi/*.msi
