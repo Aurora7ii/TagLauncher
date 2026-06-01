@@ -8,52 +8,48 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout source code
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      # 安装Node + 自动安装pnpm
-      - name: Setup Node.js
+      # 配置Node + npm淘宝源，全程只用npm
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install pnpm globally
-        run: npm install -g pnpm
-      - name: Switch npm to taobao mirror
-        run: |
-          npm config set registry https://registry.npmmirror.com
-          pnpm config set registry https://registry.npmmirror.com
+      - name: Change npm mirror
+        run: npm config set registry https://registry.npmmirror.com
 
-      # 配置Rust清华源
-      - name: Setup Rust
+      # Rust+清华源
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-      - name: Config Cargo source
+      - name: Cargo mirror config
         run: |
           New-Item -Path $env:USERPROFILE\.cargo -ItemType Directory -Force
           @"
           [source.crates-io]
-          replace-with = 'tuna'
-          [source.tuna]
+          replace-with = 'tsinghua'
+          [source.tsinghua]
           registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
           "@ | Out-File $env:USERPROFILE\.cargo\config.toml
 
-      # 安装Tauri依赖WebView2
+      # 安装tauri打包依赖
       - name: Install WebView2
         run: choco install webview2-runtime -y
 
-      # 安装项目依赖 & 打包
-      - name: Install deps & Build
+      # npm安装依赖+打包（替换pnpm）
+      - name: Install & Build
         run: |
-          pnpm install
-          pnpm tauri build
+          npm install
+          npm run tauri build
 
-      # 上传产物
-      - name: Upload artifact
+      # 上传成品
+      - name: Upload EXE&MSI
         uses: actions/upload-artifact@v4
         with:
-          name: TagLauncher-Win-Build
+          name: TagLauncher-Win
           path: |
             target/release/bundle/exe/*.exe
             target/release/bundle/msi/*.msi
