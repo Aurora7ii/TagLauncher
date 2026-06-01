@@ -4,6 +4,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # 提前适配Node24，消除Node20弃用警告
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -11,45 +14,51 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # 配置Node + npm淘宝源，全程只用npm
+      # Node20，提前兼容Node24新标准
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Change npm mirror
+      - name: NPM淘宝源加速
         run: npm config set registry https://registry.npmmirror.com
 
-      # Rust+清华源
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      # 【关键】替换废弃actions-rs/toolchain，使用官方维护新版Rust安装action
+      - name: Install Rust Toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          override: true
-      - name: Cargo mirror config
+          cache: false # 搭配下面rust-cache
+
+      # Cargo换rsproxy国内源
+      - name: Config Cargo Mirror
         run: |
           New-Item -Path $env:USERPROFILE\.cargo -ItemType Directory -Force
           @"
           [source.crates-io]
-          replace-with = 'tsinghua'
-          [source.tsinghua]
-          registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
-          "@ | Out-File $env:USERPROFILE\.cargo\config.toml
+          replace-with = 'rsproxy'
+          [source.rsproxy]
+          registry = "sparse+https://rsproxy.cn/index/"
+          "@ | Out-File $env:USERPROFILE\.cargo\config.toml -Encoding utf8
 
-      # 安装tauri打包依赖
-      - name: Install WebView2
+      # Rust编译缓存（大幅缩短二次编译时间）
+      - name: Rust Build Cache
+        uses: Swatinem/rust-cache@v2
+
+      # 预装WebView2
+      - name: Install WebView2 Runtime
         run: choco install webview2-runtime -y
 
-      # npm安装依赖+打包（替换pnpm）
-      - name: Install & Build
+      # Tauri工具国内镜像，绕过GitHub下载卡死
+      - name: Install & Build Tauri
+        env:
+          TAURI_BINARY_DOWNLOAD_BASE_URL: https://npmmirror.com/mirrors/tauri-binary-releases
         run: |
           npm install
           npm run tauri build
 
-      # 上传成品
-      - name: Upload EXE&MSI
+      # 只打包EXE，注释MSI进一步缩短打包时长
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TagLauncher-Win
-          path: |
-            target/release/bundle/exe/*.exe
-            target/release/bundle/msi/*.msi
+          name: TagLauncher-Win-EXE
+          path: target/release/bundle/exe/*.exe
